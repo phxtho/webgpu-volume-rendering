@@ -1,5 +1,7 @@
 use std::iter;
+use std::path::PathBuf;
 
+use anyhow::Ok;
 use wgpu::{
     CommandEncoderDescriptor, ComputePassDescriptor, ComputePipelineDescriptor, DeviceDescriptor,
     Instance, InstanceDescriptor, RequestAdapterOptions, ShaderModuleDescriptor, ShaderSource,
@@ -9,6 +11,8 @@ use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
+
+mod dicom_reader;
 
 #[derive(Default)]
 struct App {
@@ -52,8 +56,21 @@ impl ApplicationHandler for App {
     }
 }
 
-fn main() {
+fn main() -> Result<(), anyhow::Error> {
+    let data_dir = PathBuf::from("data/eclipse-10.0.42-fsrt-brain");
+    let files: Vec<PathBuf> = std::fs::read_dir(data_dir)?
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .collect();
+
+    let volume = dicom_reader::load_dicom_image(&files).expect("failed to read dicom files");
+    println!(
+        "Loaded volume: {}x{}x{} voxels",
+        volume.columns, volume.rows, volume.slices
+    );
+
     pollster::block_on(run());
+    Ok(())
 }
 
 async fn run() {
