@@ -1,11 +1,8 @@
-use std::iter;
 use std::path::PathBuf;
 
 use anyhow::Ok;
-use wgpu::{
-    CommandEncoderDescriptor, ComputePassDescriptor, ComputePipelineDescriptor, DeviceDescriptor,
-    Instance, InstanceDescriptor, RequestAdapterOptions, ShaderModuleDescriptor, ShaderSource,
-};
+use gpu_state::GpuState;
+use pollster::FutureExt;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -13,10 +10,12 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 mod dicom_reader;
+mod gpu_state;
 
 #[derive(Default)]
 struct App {
     window: Option<Window>,
+    gpu_state: Option<GpuState>,
 }
 
 impl ApplicationHandler for App {
@@ -24,8 +23,12 @@ impl ApplicationHandler for App {
         self.window = Some(
             event_loop
                 .create_window(Window::default_attributes())
-                .unwrap(),
+                .expect("couldn't create window"),
         );
+
+        if self.gpu_state.is_none() {
+            self.gpu_state = Some(GpuState::new().block_on());
+        }
     }
 
     fn window_event(
@@ -48,7 +51,7 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                pollster::block_on(async { render(self.window.as_ref().unwrap()).await });
+                self.gpu_state.as_mut().unwrap().run_compute_pass();
                 self.window.as_ref().unwrap().request_redraw();
             }
             _ => (),
@@ -78,52 +81,4 @@ async fn run() {
     event_loop.set_control_flow(ControlFlow::Poll); // Assuming this is better for real-time rendering
     let mut app = App::default();
     event_loop.run_app(&mut app).unwrap();
-}
-
-async fn render(window: &Window) {
-    let instance = Instance::new(InstanceDescriptor::default());
-    let surface = instance
-        .create_surface(window)
-        .expect("Failed to create surface");
-    let adapter = instance
-        .request_adapter(&RequestAdapterOptions {
-            compatible_surface: Some(&surface),
-            ..Default::default()
-        })
-        .await
-        .expect("Failed to get an adapter");
-
-    let (device, queue) = adapter
-        .request_device(&DeviceDescriptor::default(), None)
-        .await
-        .expect("Failed to get device and cmd queue");
-
-    let shader_module = device.create_shader_module(ShaderModuleDescriptor {
-        label: Some("Compute shader"),
-        source: ShaderSource::Wgsl(include_str!("compute.wgsl").into()),
-    });
-
-    let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-        label: Some("Compute pipeline"),
-        layout: None,
-        module: &shader_module,
-        entry_point: Some("main"),
-        compilation_options: Default::default(),
-        cache: None,
-    });
-
-    let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-        label: Some("Compute Pass"),
-    });
-    {
-        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label: Some("Compute Pass"),
-            timestamp_writes: None,
-        });
-
-        compute_pass.set_pipeline(&pipeline);
-        compute_pass.dispatch_workgroups(1, 1, 64);
-    }
-
-    queue.submit(iter::once(encoder.finish()));
 }
