@@ -1,34 +1,26 @@
 use std::path::PathBuf;
 
 use anyhow::Ok;
-use gpu_state::GpuState;
+use graphics::Graphics;
 use pollster::FutureExt;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::window::{Window, WindowId};
+use winit::window::WindowId;
 
 mod dicom_reader;
-mod gpu_state;
+mod graphics;
 
 #[derive(Default)]
 struct App {
-    window: Option<Window>,
-    gpu_state: Option<GpuState>,
+    graphics: Option<Graphics>,
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.window = Some(
-            event_loop
-                .create_window(Window::default_attributes())
-                .expect("couldn't create window"),
-        );
-
-        if self.gpu_state.is_none() {
-            self.gpu_state = Some(GpuState::new().block_on());
-        }
+        let window = event_loop.create_window(Default::default()).unwrap();
+        self.graphics = Some(Graphics::new(window).block_on());
     }
 
     fn window_event(
@@ -51,8 +43,10 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                self.gpu_state.as_mut().unwrap().run_compute_pass();
-                self.window.as_ref().unwrap().request_redraw();
+                let graphics = self.graphics.as_mut().unwrap();
+                graphics.compute_pass();
+                graphics.render().unwrap();
+                graphics.window.request_redraw();
             }
             _ => (),
         }
