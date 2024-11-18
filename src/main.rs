@@ -44,7 +44,6 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => {
                 let graphics = self.graphics.as_mut().unwrap();
-                graphics.compute_pass();
                 graphics.render().unwrap();
                 graphics.window.request_redraw();
             }
