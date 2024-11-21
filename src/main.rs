@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use anyhow::Ok;
+use anyhow::{Error, Ok};
+use dicom_reader::ImageVolume;
 use graphics::Graphics;
 use pollster::FutureExt;
 use winit::application::ApplicationHandler;
@@ -20,7 +21,8 @@ struct App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = event_loop.create_window(Default::default()).unwrap();
-        self.graphics = Some(Graphics::new(window).block_on());
+        let image_volume = load_image_volume("data/eclipse-10.0.42-fsrt-brain").unwrap();
+        self.graphics = Some(Graphics::new(window, image_volume).block_on());
     }
 
     fn window_event(
@@ -44,7 +46,8 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => {
                 let graphics = self.graphics.as_mut().unwrap();
-                graphics.render().unwrap();
+                let sliders = vec![0.; 6];
+                graphics.render(sliders.as_slice()).unwrap();
                 graphics.window.request_redraw();
             }
             _ => (),
@@ -52,19 +55,17 @@ impl ApplicationHandler for App {
     }
 }
 
-fn main() -> Result<(), anyhow::Error> {
-    let data_dir = PathBuf::from("data/eclipse-10.0.42-fsrt-brain");
+fn load_image_volume(path: &str) -> Result<ImageVolume, Error> {
+    let data_dir = PathBuf::from(path);
     let files: Vec<PathBuf> = std::fs::read_dir(data_dir)?
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .collect();
 
-    let volume = dicom_reader::load_dicom_image(&files).expect("failed to read dicom files");
-    println!(
-        "Loaded volume: {}x{}x{} voxels",
-        volume.columns, volume.rows, volume.slices
-    );
+    dicom_reader::load_dicom_image(&files)
+}
 
+fn main() -> Result<(), anyhow::Error> {
     pollster::block_on(run());
     Ok(())
 }

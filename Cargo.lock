@@ -2988,6 +2988,7 @@ name = "wgpu-volume-rendering"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "dicom",
  "dicom-dictionary-std",
  "pollster",
