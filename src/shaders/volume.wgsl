@@ -4,7 +4,7 @@ struct Out {
   }
 
   @vertex
-  fn vertex_shader (@builtin(vertex_index) index: u32) -> Out {
+  fn vs_main (@builtin(vertex_index) index: u32) -> Out {
 
      let points = array(
        vec2f(1,-1),
@@ -46,34 +46,34 @@ struct Out {
     }
 
     if (-150 < hu && hu < -20) {
-      let diffuseIdx = max(0, dot(normal, -light));
+      let diffuseIdx = max(0., dot(normal, -light));
       let a = 0.01;
-      let diffuse = vec3f(diffuseIdx*255,diffuseIdx*226,diffuseIdx*198) / 255;
+      let diffuse = vec3f(diffuseIdx*255.,diffuseIdx*226.,diffuseIdx*198.) / 255.;
       return uniforms.skin * vec4(diffuse*a, a);
     }
 
     if (13 < hu && hu < 75) {
-      let diffuseIdx = max(0, dot(normal, -light));
+      let diffuseIdx = max(0., dot(normal, -light));
       let diffuse = vec4f(diffuseIdx, 0, 0, 1);
       let a = .02 * (hu-13)/75;
       return uniforms.blood * diffuse * vec4f(1,0,0,0) * a;
     }
 
     if (300 < hu && hu > 400) {
-      let diffuseIdx = max(0, dot(normal, -light));
+      let diffuseIdx = max(0., dot(normal, -light));
       let diffuse = vec4f(diffuseIdx, diffuseIdx, diffuseIdx, .8);
       let ambience = vec4f(.2, .2, .2, .2);
 
-      let specular = vec4f(pow(max(0, dot(reflect(light, normal), eye)), 5));
+      let specular = vec4f(pow(max(0., dot(reflect(light, normal), eye)), 5.));
 
       return uniforms.bone * (.1 * ambience + .1*diffuse + .02*specular);
     }
 
-    return vec4f(0);
+    return vec4f(0.);
   }
 
 
-  @fragment fn fs(@location(0) pos: vec2f) -> @location(0) vec4f {
+  @fragment fn fs_main(@location(0) pos: vec2f) -> @location(0) vec4f {
     let uInput = uniforms.rotation;
 
     let center = vec2f(.5, .5);

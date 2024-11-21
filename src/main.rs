@@ -46,7 +46,7 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => {
                 let graphics = self.graphics.as_mut().unwrap();
-                let sliders = vec![0.; 6];
+                let sliders = vec![1.; 6];
                 graphics.render(sliders.as_slice()).unwrap();
                 graphics.window.request_redraw();
             }

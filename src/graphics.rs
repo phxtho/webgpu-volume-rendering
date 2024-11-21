@@ -30,7 +30,13 @@ impl Graphics {
             .expect("Failed to get an adapter");
 
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default(), None)
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    required_features: wgpu::Features::FLOAT32_FILTERABLE,
+                    ..Default::default()
+                },
+                None,
+            )
             .await
             .expect("Failed to get device and cmd queue");
 
@@ -118,7 +124,7 @@ impl Graphics {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D3,
                         multisampled: false,
                     },
